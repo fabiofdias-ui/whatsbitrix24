@@ -11,28 +11,23 @@ app = Flask(__name__)
 
 @app.route('/')
 def home():
-    return "Serviço de Tracking UTM para Bitrix24 (v3) está no ar!", 200
+    return "Serviço de Tracking UTM para Bitrix24 (v4 - Final) está no ar!", 200
 
 @app.route('/whatsapp')
 def handle_whatsapp_redirect():
-    # 1. Captura todos os parâmetros da URL (utm_source, etc.)
     utm_params = {key: value for key, value in request.args.items()}
     print(f"Parâmetros UTM capturados: {utm_params}")
 
-    # 2. Prepara os campos para a API do Bitrix24
-    # --- CORREÇÃO CRÍTICA AQUI ---
-    # O formato correto para os campos UTM é 'UTM_SOURCE', 'UTM_MEDIUM', etc.
-    # Vamos criar o dicionário de campos e depois adicionar os UTMs.
-    fields_to_create = {}
-    fields_to_create["TITLE"] = f"Novo Lead via WhatsApp UTM - {time.strftime('%Y-%m-%d %H:%M')}"
-    
+    # Prepara os campos para a API
+    fields_to_create = {
+        "TITLE": f"Novo Lead via WhatsApp UTM - {time.strftime('%Y-%m-%d %H:%M')}"
+    }
+    # Adiciona os campos UTM ao dicionário
     for key, value in utm_params.items():
         fields_to_create[f"UTM_{key.upper()}"] = value
 
-    # 3. Monta a chamada para criar um NOVO lead já com os UTMs
     if BITRIX24_INBOUND_WEBHOOK_URL and utm_params:
         create_url = f"{BITRIX24_INBOUND_WEBHOOK_URL}crm.lead.add"
-        # O payload envia o dicionário de campos diretamente
         payload = {'fields': fields_to_create}
 
         try:
@@ -41,9 +36,8 @@ def handle_whatsapp_redirect():
             print(f"Comando para criar lead com UTMs enviado. Payload: {payload}. Resposta: {response.json()}")
         except requests.exceptions.RequestException as e:
             print(f"Erro ao enviar comando para criar lead: {e}")
-            # Mesmo que falhe, continua para o WhatsApp
     
-    # 4. Redireciona o utilizador para o WhatsApp
+    # Redireciona para o WhatsApp independentemente do resultado
     if not WHATSAPP_NUMBER:
         return "Erro: O número de WhatsApp não está configurado no servidor.", 500
 
