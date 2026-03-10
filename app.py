@@ -11,7 +11,7 @@ app = Flask(__name__)
 
 @app.route('/')
 def home():
-    return "Serviço de Tracking UTM para Bitrix24 (v4 - Final) está no ar!", 200
+    return "Serviço de Tracking UTM para Bitrix24 (v5 - Corrigido) está no ar!", 200
 
 @app.route('/whatsapp')
 def handle_whatsapp_redirect():
@@ -22,9 +22,15 @@ def handle_whatsapp_redirect():
     fields_to_create = {
         "TITLE": f"Novo Lead via WhatsApp UTM - {time.strftime('%Y-%m-%d %H:%M')}"
     }
-    # Adiciona os campos UTM ao dicionário
+    
+    # --- CORREÇÃO FINAL AQUI ---
+    # Adiciona os campos UTM ao dicionário, garantindo que não há duplicação
     for key, value in utm_params.items():
-        fields_to_create[f"UTM_{key.upper()}"] = value
+        # Transforma 'utm_source' em 'UTM_SOURCE' e não 'UTM_UTM_SOURCE'
+        field_name = key.upper()
+        if not field_name.startswith('UTM_'):
+            field_name = f"UTM_{field_name}"
+        fields_to_create[field_name] = value
 
     if BITRIX24_INBOUND_WEBHOOK_URL and utm_params:
         create_url = f"{BITRIX24_INBOUND_WEBHOOK_URL}crm.lead.add"
@@ -37,7 +43,7 @@ def handle_whatsapp_redirect():
         except requests.exceptions.RequestException as e:
             print(f"Erro ao enviar comando para criar lead: {e}")
     
-    # Redireciona para o WhatsApp independentemente do resultado
+    # Redireciona para o WhatsApp
     if not WHATSAPP_NUMBER:
         return "Erro: O número de WhatsApp não está configurado no servidor.", 500
 
