@@ -11,7 +11,7 @@ app = Flask(__name__)
 
 @app.route('/')
 def home():
-    return "Serviço de Tracking UTM para Bitrix24 (v2) está no ar!", 200
+    return "Serviço de Tracking UTM para Bitrix24 (v3) está no ar!", 200
 
 @app.route('/whatsapp')
 def handle_whatsapp_redirect():
@@ -20,25 +20,25 @@ def handle_whatsapp_redirect():
     print(f"Parâmetros UTM capturados: {utm_params}")
 
     # 2. Prepara os campos para a API do Bitrix24
-    # O Bitrix espera os campos no formato 'fields[UTM_SOURCE]', etc.
-    fields_to_create = {f"UTM_{key.upper()}": value for key, value in utm_params.items()}
-    
-    # Adiciona um título para o lead para fácil identificação
+    # --- CORREÇÃO CRÍTICA AQUI ---
+    # O formato correto para os campos UTM é 'UTM_SOURCE', 'UTM_MEDIUM', etc.
+    # Vamos criar o dicionário de campos e depois adicionar os UTMs.
+    fields_to_create = {}
     fields_to_create["TITLE"] = f"Novo Lead via WhatsApp UTM - {time.strftime('%Y-%m-%d %H:%M')}"
     
-    # Adiciona o número de telefone ao lead (se quiser que ele já seja criado)
-    # fields_to_create["PHONE"] = [{"VALUE": WHATSAPP_NUMBER, "VALUE_TYPE": "WORK"}]
-
+    for key, value in utm_params.items():
+        fields_to_create[f"UTM_{key.upper()}"] = value
 
     # 3. Monta a chamada para criar um NOVO lead já com os UTMs
     if BITRIX24_INBOUND_WEBHOOK_URL and utm_params:
         create_url = f"{BITRIX24_INBOUND_WEBHOOK_URL}crm.lead.add"
+        # O payload envia o dicionário de campos diretamente
         payload = {'fields': fields_to_create}
 
         try:
             response = requests.post(create_url, json=payload)
             response.raise_for_status()
-            print(f"Comando para criar lead com UTMs enviado. Resposta: {response.json()}")
+            print(f"Comando para criar lead com UTMs enviado. Payload: {payload}. Resposta: {response.json()}")
         except requests.exceptions.RequestException as e:
             print(f"Erro ao enviar comando para criar lead: {e}")
             # Mesmo que falhe, continua para o WhatsApp
@@ -50,9 +50,5 @@ def handle_whatsapp_redirect():
     whatsapp_url = f"https://wa.me/{WHATSAPP_NUMBER}"
     return redirect(whatsapp_url )
 
-# O webhook de saída não é mais necessário com esta abordagem
-# A rota /bitrix-webhook pode ser removida ou deixada inativa
-
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 8080)))
-
